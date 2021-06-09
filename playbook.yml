@@ -1,0 +1,109 @@
+- hosts: all
+  remote_user: root
+  become_method: sudo
+  become_user: root
+  tasks:
+  #Update & upgrade
+  - name: apt-get update & upgrade
+    apt:
+      upgrade: yes
+      update_cache: yes
+    become: true
+  #git install
+  - name: install git
+    apt:
+      name: git
+      state: present
+  #install xinetd
+  - name: install xinetd 
+    apt:
+      name: xinetd
+      state: present
+  #checkmk agent
+  - name: wget checkmk agent
+    command:
+      cmd: wget http://172.18.0.5:5000/cmk/check_mk/agents/check-mk-agent_2.0.0p5-1_all.deb
+  #dpkg checkmk agent
+  - name: dpkg checkmk agent
+    command:
+      cmd: dpkg -i check-mk-agent_2.0.0p5-1_all.deb
+  #download repo
+  - name: check if project folder exists
+    stat:
+      path: /project
+    register: stat_project
+  
+  - name: delete if project folder exists
+    command:
+      cmd: rm -r /project
+    become:  true
+    when: stat_project.stat.exists
+
+  - name: create /project folder
+    command:
+      cmd: mkdir /project
+
+  - name: download repo
+    git:
+      repo: https://github.com/nielsxformer02/ESOTrialDevops.git
+      dest: /project
+      force: true
+
+  #dotnet package install
+  - name: wget dotnet package
+    command:
+      cmd: wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+  
+  - name: dpkg pulled dotnet package
+    command:
+      cmd: dpkg -i packages-microsoft-prod.deb
+
+  - name: add add-apt-repository
+    apt:
+      name: software-properties-common
+      state: present
+    become: true
+
+  - name: add universe repo
+    command:
+      cmd: add-apt-repository universe
+  - name: Install apt-transport-https
+    apt:
+      name: apt-transport-https
+      state: present
+    become: true
+  - name: Update packages
+    command:
+      cmd: apt-get update
+    
+  - name: install net core 5 sdk
+    apt:
+      name: dotnet-sdk-5.0
+      state: present
+    become: true
+  
+  - name: install ASP.NET 5 runtime
+    apt:
+      name: aspnetcore-runtime-5.0
+      state: present
+    become: true
+  
+  - name: install .NET core 5 runtime
+    apt:
+      name: dotnet-runtime-5.0
+      state: present
+    become: true
+#start up project
+  - name: dotnet restore
+    command:
+      cmd: dotnet restore /project/ESO-trial-API/ESO-trial-API/ESO-trial-API.csproj
+    become: true
+  
+  - name: dotnet build
+    command:
+      cmd: dotnet build /project/ESO-trial-API/ESO-trial-API/ESO-trial-API.csproj
+    become: true
+
+
+
+    
