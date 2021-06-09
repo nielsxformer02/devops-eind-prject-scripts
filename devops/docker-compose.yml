@@ -1,0 +1,66 @@
+version: "3.3"
+services:
+  prod:
+    build: prod
+    restart: always
+    networks:
+      devops:
+        ipv4_address: 172.18.0.4
+  dev:
+    build: prod
+    restart: always
+    networks:
+      devops:
+        ipv4_address: 172.18.0.3
+  jenkins:
+    build: jenkins
+    networks:
+      devops:
+        ipv4_address: 172.18.0.2
+    restart: always
+    volumes:
+      - ./jenkins_storage:/var/jenkins_home
+      - ./jenkins/hosts:/etc/ansible/hosts
+    ports:
+      - 8080:8080
+      - 50000:50000
+    depends_on:
+      - prod
+      - dev
+  checkmk:
+    build: checkmk
+    networks:
+      devops:
+        ipv4_address: 172.18.0.5
+    restart: always
+    ports: 
+      - 8081:5000
+    ulimits:
+      nofile: 1024
+    volumes:
+      - ./checkmk_storage:/omd/sites
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - jenkins
+  elk:
+    image: sebp/elk
+    restart: always
+    ports:
+      - 5601:5601
+      - 9200:9200
+      - 5044:5044
+    volumes:
+      - ./elk_storage:/var/lib/elasticsearch
+    networks:
+      devops:
+        ipv4_address: 172.18.0.6
+    depends_on:
+      - checkmk
+
+networks:
+  devops:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/24
+#        - gateway: 172.17.0.1
